@@ -1,6 +1,6 @@
 // Cliente da API da Elotake (rotas em src/app/api).
 
-import { uploadPresigned } from "@vercel/blob/client";
+import { upload } from "@vercel/blob/client";
 import type {
   Brief,
   Catalog,
@@ -47,7 +47,7 @@ function safeName(name: string) {
 async function uploadFile(file: File, onProgress?: Progress): Promise<string> {
   const pathname = `uploads/${crypto.randomUUID()}/${safeName(file.name)}`;
   if ((await config()).storage === "blob") {
-    const result = await uploadPresigned(pathname, file, {
+    const result = await upload(pathname, file, {
       access: "private",
       handleUploadUrl: "/api/upload",
       contentType: file.type || undefined,

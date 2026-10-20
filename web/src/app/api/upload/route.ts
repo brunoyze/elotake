@@ -1,8 +1,7 @@
 // Upload do vídeo bruto e da música.
-// Na Vercel, o navegador manda o arquivo direto para o Blob com uma URL assinada que
-// esta rota emite (o arquivo não passa pela função). Em desenvolvimento, recebe o arquivo aqui.
-import { issueSignedToken } from "@vercel/blob";
-import { type HandleUploadPresignedBody, handleUploadPresigned } from "@vercel/blob/client";
+// Na Vercel, o navegador manda o arquivo direto para o Blob com um token de upload
+// de uso único que esta rota emite (o arquivo não passa pela função). Em desenvolvimento, recebe o arquivo aqui.
+import { type HandleUploadBody, handleUpload } from "@vercel/blob/client";
 import { requestHasAccess } from "@/lib/access";
 import { isUploadPath } from "@/lib/server/projects";
 import { storage } from "@/lib/server/storage";
@@ -24,26 +23,19 @@ export async function POST(request: Request) {
     return Response.json({ pathname });
   }
 
-  const body = (await request.json()) as HandleUploadPresignedBody;
+  const body = (await request.json()) as HandleUploadBody;
   try {
-    const result = await handleUploadPresigned({
+    const result = await handleUpload({
       body,
       request,
-      getSignedToken: async (pathname) => {
+      onBeforeGenerateToken: async (pathname) => {
         if (!isUploadPath(pathname)) throw new Error("caminho de upload inválido");
-        const token = await issueSignedToken({
-          pathname,
-          operations: ["put"],
-          validUntil: Date.now() + 2 * 60 * 60 * 1000,
-        });
         return {
-          token,
-          urlOptions: {
-            allowedContentTypes: ["video/*", "audio/*"],
-            maximumSizeInBytes: MAX_BYTES,
-            addRandomSuffix: false,
-            allowOverwrite: false,
-          },
+          allowedContentTypes: ["video/*", "audio/*"],
+          maximumSizeInBytes: MAX_BYTES,
+          addRandomSuffix: false,
+          allowOverwrite: false,
+          validUntil: Date.now() + 2 * 60 * 60 * 1000,
         };
       },
     });
