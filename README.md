@@ -48,7 +48,10 @@ API Next.js ──cria máquina + copia o motor──▶ Vercel Sandbox (FFmpeg,
 | `ELOTAKE_VCPUS` | não | vCPUs por máquina; padrão 4 (máximo do plano Hobby) |
 | `ELOTAKE_SNAPSHOT_ID` | não | Snapshot de Sandbox já preparado (pula a instalação) |
 
-O acesso fica protegido pela própria Vercel (Deployment Protection) até entrar login.
+| `ELOTAKE_ACCESS_CODE` | sim, em produção | Código da tela "Entrar" (teste fechado, até entrar login) |
+
+Enquanto não há login, o app pede um código de acesso (tela `/entrar`). Sem
+`ELOTAKE_ACCESS_CODE` (desenvolvimento local), o app fica aberto.
 
 ## Desenvolvimento local
 

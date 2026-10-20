@@ -3,6 +3,7 @@
 // esta rota emite (o arquivo não passa pela função). Em desenvolvimento, recebe o arquivo aqui.
 import { issueSignedToken } from "@vercel/blob";
 import { type HandleUploadPresignedBody, handleUploadPresigned } from "@vercel/blob/client";
+import { requestHasAccess } from "@/lib/access";
 import { isUploadPath } from "@/lib/server/projects";
 import { storage } from "@/lib/server/storage";
 
@@ -11,6 +12,7 @@ export const dynamic = "force-dynamic";
 const MAX_BYTES = 4 * 1024 ** 3;
 
 export async function POST(request: Request) {
+  if (!(await requestHasAccess(request))) return Response.json({ detail: "sem acesso" }, { status: 401 });
   if (storage().kind === "local") {
     const form = await request.formData();
     const file = form.get("file");

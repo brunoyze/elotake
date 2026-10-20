@@ -165,7 +165,7 @@ Tudo roda na Vercel por enquanto (Supabase entra quando houver login e vários u
 | Edição (FFmpeg + Whisper + Claude) | Uma Vercel Sandbox por vídeo, criada sob demanda | Snapshot pronto para ligar mais rápido; plano Pro para vídeos longos |
 | Arquivos | Vercel Blob privado; upload direto do navegador com URL assinada | Mesma |
 | Dados (projetos, estilos) | JSON no Blob | Postgres (Supabase) |
-| Login | Proteção da própria Vercel (só quem tem acesso ao projeto) | Supabase Auth (e-mail, Google) |
+| Login | Código de acesso único (teste fechado) | Supabase Auth (e-mail, Google), uma conta por pessoa |
 | Pagamento | — | Stripe (assinatura + créditos de minutos) |
 
 Limites do plano Hobby da Vercel (gratuito), suficientes para uso próprio e testes:
