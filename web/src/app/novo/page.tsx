@@ -26,6 +26,7 @@ export default function NovoPage() {
     efeitos: null,
   });
   const [sending, setSending] = useState(false);
+  const [uploaded, setUploaded] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -52,7 +53,7 @@ export default function NovoPage() {
     setSending(true);
     setError(null);
     try {
-      const project = await api.createProject(video, profile.id, brief, music);
+      const project = await api.createProject(video, profile.id, brief, music, setUploaded);
       router.push(`/projetos/${project.id}`);
     } catch (e) {
       setError((e as Error).message);
@@ -134,7 +135,7 @@ export default function NovoPage() {
       <div className="sticky bottom-4 flex justify-end">
         <Button onClick={submit} disabled={!video || sending} className="px-6 py-3 text-base shadow-xl">
           {sending ? <Spinner /> : null}
-          {sending ? "Enviando…" : "Editar meu vídeo"}
+          {sending ? `Enviando… ${Math.round(uploaded * 100)}%` : "Editar meu vídeo"}
         </Button>
       </div>
     </div>

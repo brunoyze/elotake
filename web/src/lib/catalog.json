@@ -1,0 +1,295 @@
+{
+  "estilos": [
+    {
+      "id": "dinamico",
+      "nome": "Dinâmico (creator)",
+      "descricao": "Cortes secos, zoom a cada frase, legenda grande com palavra destacada.",
+      "ritmo": "rapido",
+      "legenda": "destaque",
+      "cor": "vivo",
+      "efeitos": {
+        "cortar_silencios": true,
+        "remover_vicios": true,
+        "zoom_dinamico": true,
+        "legendas": true,
+        "flash_transicao": false,
+        "granulado": false,
+        "barras_cinema": false,
+        "vinheta": false,
+        "musica": true,
+        "melhorar_audio": true,
+        "gancho_inicial": true
+      }
+    },
+    {
+      "id": "cinematografico",
+      "nome": "Cinematográfico",
+      "descricao": "Ritmo respirado, cor fílmica, barras de cinema, granulado e legenda discreta.",
+      "ritmo": "calmo",
+      "legenda": "limpa",
+      "cor": "filme",
+      "efeitos": {
+        "cortar_silencios": true,
+        "remover_vicios": true,
+        "zoom_dinamico": false,
+        "legendas": true,
+        "flash_transicao": false,
+        "granulado": true,
+        "barras_cinema": true,
+        "vinheta": true,
+        "musica": true,
+        "melhorar_audio": true,
+        "gancho_inicial": true
+      }
+    },
+    {
+      "id": "clean",
+      "nome": "Clean / corporativo",
+      "descricao": "Profissional e sóbrio. Cortes de pausas, legenda limpa, cor natural.",
+      "ritmo": "equilibrado",
+      "legenda": "limpa",
+      "cor": "natural",
+      "efeitos": {
+        "cortar_silencios": true,
+        "remover_vicios": true,
+        "zoom_dinamico": false,
+        "legendas": true,
+        "flash_transicao": false,
+        "granulado": false,
+        "barras_cinema": false,
+        "vinheta": false,
+        "musica": true,
+        "melhorar_audio": true,
+        "gancho_inicial": true
+      }
+    },
+    {
+      "id": "ugc_ads",
+      "nome": "UGC para anúncios",
+      "descricao": "Cara de conteúdo orgânico que converte: gancho forte, legenda karaokê, flash nos cortes.",
+      "ritmo": "rapido",
+      "legenda": "karaoke",
+      "cor": "vivo",
+      "efeitos": {
+        "cortar_silencios": true,
+        "remover_vicios": true,
+        "zoom_dinamico": true,
+        "legendas": true,
+        "flash_transicao": true,
+        "granulado": false,
+        "barras_cinema": false,
+        "vinheta": false,
+        "musica": true,
+        "melhorar_audio": true,
+        "gancho_inicial": true
+      }
+    },
+    {
+      "id": "podcast",
+      "nome": "Podcast",
+      "descricao": "Natural e fluido. Remove só silêncios longos e tropeços.",
+      "ritmo": "calmo",
+      "legenda": "limpa",
+      "cor": "natural",
+      "efeitos": {
+        "cortar_silencios": true,
+        "remover_vicios": false,
+        "zoom_dinamico": false,
+        "legendas": true,
+        "flash_transicao": false,
+        "granulado": false,
+        "barras_cinema": false,
+        "vinheta": false,
+        "musica": false,
+        "melhorar_audio": true,
+        "gancho_inicial": false
+      }
+    }
+  ],
+  "perfis": {
+    "dinamico": {
+      "id": "dinamico",
+      "nome": "Dinâmico (creator)",
+      "preset": "dinamico",
+      "ritmo": "rapido",
+      "legenda": "destaque",
+      "cor_destaque": "#FFD400",
+      "fonte": "Inter",
+      "cor": "vivo",
+      "clima_musica": "energetico",
+      "referencias": [],
+      "observacoes": "",
+      "efeitos": {
+        "cortar_silencios": true,
+        "remover_vicios": true,
+        "zoom_dinamico": true,
+        "legendas": true,
+        "flash_transicao": false,
+        "granulado": false,
+        "barras_cinema": false,
+        "vinheta": false,
+        "musica": true,
+        "melhorar_audio": true,
+        "gancho_inicial": true
+      }
+    },
+    "cinematografico": {
+      "id": "cinematografico",
+      "nome": "Cinematográfico",
+      "preset": "cinematografico",
+      "ritmo": "calmo",
+      "legenda": "limpa",
+      "cor_destaque": "#FFD400",
+      "fonte": "Inter",
+      "cor": "filme",
+      "clima_musica": "emocional",
+      "referencias": [],
+      "observacoes": "",
+      "efeitos": {
+        "cortar_silencios": true,
+        "remover_vicios": true,
+        "zoom_dinamico": false,
+        "legendas": true,
+        "flash_transicao": false,
+        "granulado": true,
+        "barras_cinema": true,
+        "vinheta": true,
+        "musica": true,
+        "melhorar_audio": true,
+        "gancho_inicial": true
+      }
+    },
+    "clean": {
+      "id": "clean",
+      "nome": "Clean / corporativo",
+      "preset": "clean",
+      "ritmo": "equilibrado",
+      "legenda": "limpa",
+      "cor_destaque": "#FFD400",
+      "fonte": "Inter",
+      "cor": "natural",
+      "clima_musica": "corporativo",
+      "referencias": [],
+      "observacoes": "",
+      "efeitos": {
+        "cortar_silencios": true,
+        "remover_vicios": true,
+        "zoom_dinamico": false,
+        "legendas": true,
+        "flash_transicao": false,
+        "granulado": false,
+        "barras_cinema": false,
+        "vinheta": false,
+        "musica": true,
+        "melhorar_audio": true,
+        "gancho_inicial": true
+      }
+    },
+    "ugc_ads": {
+      "id": "ugc_ads",
+      "nome": "UGC para anúncios",
+      "preset": "ugc_ads",
+      "ritmo": "rapido",
+      "legenda": "karaoke",
+      "cor_destaque": "#FFD400",
+      "fonte": "Inter",
+      "cor": "vivo",
+      "clima_musica": "energetico",
+      "referencias": [],
+      "observacoes": "",
+      "efeitos": {
+        "cortar_silencios": true,
+        "remover_vicios": true,
+        "zoom_dinamico": true,
+        "legendas": true,
+        "flash_transicao": true,
+        "granulado": false,
+        "barras_cinema": false,
+        "vinheta": false,
+        "musica": true,
+        "melhorar_audio": true,
+        "gancho_inicial": true
+      }
+    },
+    "podcast": {
+      "id": "podcast",
+      "nome": "Podcast",
+      "preset": "podcast",
+      "ritmo": "calmo",
+      "legenda": "limpa",
+      "cor_destaque": "#FFD400",
+      "fonte": "Inter",
+      "cor": "natural",
+      "clima_musica": "sem_musica",
+      "referencias": [],
+      "observacoes": "",
+      "efeitos": {
+        "cortar_silencios": true,
+        "remover_vicios": false,
+        "zoom_dinamico": false,
+        "legendas": true,
+        "flash_transicao": false,
+        "granulado": false,
+        "barras_cinema": false,
+        "vinheta": false,
+        "musica": false,
+        "melhorar_audio": true,
+        "gancho_inicial": false
+      }
+    }
+  },
+  "plataformas": [
+    {
+      "id": "youtube",
+      "nome": "YouTube",
+      "largura": 1920,
+      "altura": 1080,
+      "duracao_max": null
+    },
+    {
+      "id": "reels",
+      "nome": "Reels / TikTok / Shorts",
+      "largura": 1080,
+      "altura": 1920,
+      "duracao_max": 90.0
+    },
+    {
+      "id": "ads",
+      "nome": "Anúncio",
+      "largura": 1080,
+      "altura": 1920,
+      "duracao_max": 45.0
+    },
+    {
+      "id": "feed",
+      "nome": "Feed 4:5",
+      "largura": 1080,
+      "altura": 1350,
+      "duracao_max": 60.0
+    },
+    {
+      "id": "podcast",
+      "nome": "Podcast / entrevista",
+      "largura": 1920,
+      "altura": 1080,
+      "duracao_max": null
+    }
+  ],
+  "cores": [
+    "natural",
+    "vivo",
+    "filme",
+    "pb"
+  ],
+  "legendas": [
+    "nenhuma",
+    "destaque",
+    "limpa",
+    "karaoke"
+  ],
+  "ritmos": [
+    "calmo",
+    "equilibrado",
+    "rapido"
+  ]
+}

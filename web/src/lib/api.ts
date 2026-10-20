@@ -1,116 +1,23 @@
-// Cliente do motor Elotake (engine/). O navegador fala direto com a API do motor,
-// para que uploads grandes não passem pelo servidor do Next.
+// Cliente da API da Elotake (rotas em src/app/api).
 
-export const ENGINE_URL = process.env.NEXT_PUBLIC_ENGINE_URL ?? "http://localhost:8000";
+import { uploadPresigned } from "@vercel/blob/client";
+import type {
+  Brief,
+  Catalog,
+  Project,
+  ReferenceInsight,
+  StyleProfile,
+  WorkerStatus,
+} from "./types";
+import { PROFILE_ID, TERMINAL } from "./types";
 
-export type Pace = "calmo" | "equilibrado" | "rapido";
-export type CaptionStyle = "nenhuma" | "destaque" | "limpa" | "karaoke";
-export type PlatformId = "youtube" | "reels" | "ads" | "feed" | "podcast";
-export type ReframeMode = "crop" | "blur";
+export * from "./types";
 
-export type Effects = {
-  cortar_silencios: boolean;
-  remover_vicios: boolean;
-  zoom_dinamico: boolean;
-  legendas: boolean;
-  flash_transicao: boolean;
-  granulado: boolean;
-  barras_cinema: boolean;
-  vinheta: boolean;
-  musica: boolean;
-  melhorar_audio: boolean;
-  gancho_inicial: boolean;
-};
-
-export type StyleProfile = {
-  id: string;
-  nome: string;
-  preset: string;
-  ritmo: Pace;
-  legenda: CaptionStyle;
-  cor_destaque: string;
-  fonte: string;
-  cor: string;
-  clima_musica: string;
-  referencias: string[];
-  observacoes: string;
-  efeitos: Effects;
-};
-
-export type Brief = {
-  plataforma: PlatformId;
-  objetivo: string;
-  duracao_max: number | null;
-  reenquadrar: ReframeMode;
-  efeitos: Effects | null;
-};
-
-export type StylePreset = {
-  id: string;
-  nome: string;
-  descricao: string;
-  ritmo: Pace;
-  legenda: CaptionStyle;
-  cor: string;
-  efeitos: Effects;
-};
-
-export type PlatformInfo = {
-  id: PlatformId;
-  nome: string;
-  largura: number;
-  altura: number;
-  duracao_max: number | null;
-};
-
-export type Catalog = {
-  estilos: StylePreset[];
-  plataformas: PlatformInfo[];
-  cores: string[];
-  legendas: CaptionStyle[];
-  ritmos: Pace[];
-};
-
-export type Segment = { start: number; end: number; zoom: number; motivo: string };
-
-export type EditPlan = {
-  segments: Segment[];
-  overlays: { text: string; start: number; end: number }[];
-  destaques: string[];
-  titulo: string;
-  descricao: string;
-  hashtags: string[];
-  resumo_edicao: string;
-  autor: "heuristico" | "claude";
-};
-
-export type ProjectStatus = "na_fila" | "analisando" | "dirigindo" | "renderizando" | "pronto" | "erro";
-
-export type Project = {
-  id: string;
-  nome: string;
-  criado_em: number;
-  profile_id: string;
-  brief: Brief;
-  status: ProjectStatus;
-  progresso: number;
-  erro: string | null;
-  plano: EditPlan | null;
-  duracao_original: number | null;
-  versao: number;
-};
-
-export type ReferenceInsight = {
-  duracao: number;
-  cortes_por_minuto: number;
-  ritmo_sugerido: Pace;
-  formato: "vertical" | "horizontal";
-};
-
-export const PROFILE_ID = "meu-estilo";
+type Config = { storage: "blob" | "local"; ia: boolean };
+type Progress = (fraction: number) => void;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${ENGINE_URL}${path}`, { cache: "no-store", ...init });
+  const res = await fetch(path, { cache: "no-store", ...init });
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.detail ?? `Erro ${res.status}`);
@@ -118,89 +25,93 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+const json = (method: string, body: unknown): RequestInit => ({
+  method,
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
+
+let configPromise: Promise<Config> | null = null;
+const config = () => (configPromise ??= request<Config>("/api/config"));
+
+function safeName(name: string) {
+  const clean = name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^\w.-]+/g, "-")
+    .slice(-80);
+  return clean || "arquivo";
+}
+
+/** Envia um arquivo e devolve o caminho dele no armazenamento. */
+async function uploadFile(file: File, onProgress?: Progress): Promise<string> {
+  const pathname = `uploads/${crypto.randomUUID()}/${safeName(file.name)}`;
+  if ((await config()).storage === "blob") {
+    const result = await uploadPresigned(pathname, file, {
+      access: "private",
+      handleUploadUrl: "/api/upload",
+      contentType: file.type || undefined,
+      multipart: file.size > 50 * 1024 * 1024,
+      onUploadProgress: (e) => onProgress?.(e.percentage / 100),
+    });
+    return result.pathname;
+  }
+  const form = new FormData();
+  form.append("file", file);
+  form.append("pathname", pathname);
+  const result = await request<{ pathname: string }>("/api/upload", { method: "POST", body: form });
+  onProgress?.(1);
+  return result.pathname;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export const api = {
-  health: () => request<{ ok: boolean; ia: boolean }>("/api/health"),
+  config,
   catalog: () => request<Catalog>("/api/catalogo"),
   // Perfis salvos ou presets; null quando a pessoa ainda não salvou o estilo dela.
   getProfile: (id = PROFILE_ID) => request<StyleProfile>(`/api/perfis/${id}`).catch(() => null),
-  saveProfile: (profile: StyleProfile) =>
-    request<StyleProfile>(`/api/perfis/${profile.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(profile),
-    }),
-  analyzeReference: (file: File) => {
-    const form = new FormData();
-    form.append("video", file);
-    return request<ReferenceInsight>("/api/referencias/analisar", { method: "POST", body: form });
+  saveProfile: (profile: StyleProfile) => request<StyleProfile>(`/api/perfis/${profile.id}`, json("PUT", profile)),
+
+  async analyzeReference(file: File, onProgress?: Progress): Promise<ReferenceInsight> {
+    const video = await uploadFile(file, (p) => onProgress?.(p * 0.3));
+    const { job } = await request<{ job: { kind: string; id: string } }>("/api/referencias", json("POST", { video }));
+    const query = new URLSearchParams({ kind: job.kind, id: job.id, video });
+    for (let i = 0; i < 200; i++) {
+      await sleep(3000);
+      const status = await request<WorkerStatus>(`/api/referencias?${query}`);
+      onProgress?.(0.3 + 0.7 * (status.progresso ?? 0));
+      if (status.status === "erro") throw new Error(status.erro ?? "não consegui analisar a referência");
+      if (TERMINAL.includes(status.status) && status.resultado) return status.resultado;
+    }
+    throw new Error("a análise da referência demorou demais");
   },
-  createProject: (video: File, profileId: string, brief: Brief, music?: File | null) => {
-    const form = new FormData();
-    form.append("video", video);
-    form.append("profile_id", profileId);
-    form.append("brief", JSON.stringify(brief));
-    if (music) form.append("musica", music);
-    return request<Project>("/api/projetos", { method: "POST", body: form });
+
+  async createProject(
+    video: File,
+    profileId: string,
+    brief: Brief,
+    music?: File | null,
+    onProgress?: Progress,
+  ): Promise<Project> {
+    const videoPath = await uploadFile(video, (p) => onProgress?.(p * (music ? 0.9 : 1)));
+    const musicPath = music ? await uploadFile(music, (p) => onProgress?.(0.9 + p * 0.1)) : null;
+    return request<Project>(
+      "/api/projetos",
+      json("POST", {
+        nome: video.name.replace(/\.[^.]+$/, ""),
+        profile_id: profileId,
+        brief,
+        video: videoPath,
+        musica: musicPath,
+      }),
+    );
   },
+
   listProjects: () => request<Project[]>("/api/projetos"),
   getProject: (id: string) => request<Project>(`/api/projetos/${id}`),
+  deleteProject: (id: string) => request<{ ok: boolean }>(`/api/projetos/${id}`, { method: "DELETE" }),
   redo: (id: string, body: { brief?: Brief; profile_id?: string }) =>
-    request<Project>(`/api/projetos/${id}/refazer`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }),
-  fileUrl: (p: Project, name: "final.mp4" | "thumb.jpg") =>
-    `${ENGINE_URL}/api/projetos/${p.id}/arquivos/${name}?v=${p.versao}`,
-};
-
-export const EFFECT_LABELS: Record<keyof Effects, { nome: string; dica: string }> = {
-  cortar_silencios: { nome: "Cortar silêncios", dica: "Tira pausas e respiros longos" },
-  remover_vicios: { nome: "Remover vícios", dica: "\"ahn\", \"né\", \"tipo\" soltos" },
-  gancho_inicial: { nome: "Gancho inicial", dica: "Abre com a frase mais forte" },
-  zoom_dinamico: { nome: "Zoom de ênfase", dica: "Punch-in nas frases de impacto" },
-  legendas: { nome: "Legendas animadas", dica: "Geradas da sua fala" },
-  melhorar_audio: { nome: "Melhorar áudio", dica: "Limpa ruído e equaliza a voz" },
-  musica: { nome: "Música de fundo", dica: "Abaixa sozinha quando você fala" },
-  flash_transicao: { nome: "Flash nos cortes", dica: "Clarão rápido entre cenas" },
-  granulado: { nome: "Granulado de filme", dica: "Textura analógica" },
-  barras_cinema: { nome: "Barras de cinema", dica: "Faixas pretas em cima e embaixo" },
-  vinheta: { nome: "Vinheta", dica: "Escurece as bordas" },
-};
-
-export const PACE_LABELS: Record<Pace, string> = {
-  calmo: "Calmo",
-  equilibrado: "Equilibrado",
-  rapido: "Rápido",
-};
-
-export const CAPTION_LABELS: Record<CaptionStyle, { nome: string; dica: string }> = {
-  destaque: { nome: "Destaque", dica: "Caixa alta, palavra ativa colorida" },
-  karaoke: { nome: "Karaokê", dica: "Uma palavra por vez, grande" },
-  limpa: { nome: "Limpa", dica: "Frase inteira, discreta" },
-  nenhuma: { nome: "Sem legenda", dica: "" },
-};
-
-export const COLOR_LABELS: Record<string, string> = {
-  natural: "Natural",
-  vivo: "Vivo",
-  filme: "Filme",
-  pb: "Preto e branco",
-};
-
-export const MUSIC_MOODS: Record<string, string> = {
-  energetico: "Energético",
-  emocional: "Emocional",
-  corporativo: "Corporativo",
-  calmo: "Calmo",
-  sem_musica: "Sem música",
-};
-
-export const STATUS_LABELS: Record<ProjectStatus, string> = {
-  na_fila: "Na fila",
-  analisando: "Ouvindo e analisando o vídeo",
-  dirigindo: "Decidindo a montagem",
-  renderizando: "Renderizando",
-  pronto: "Pronto",
-  erro: "Erro",
+    request<Project>(`/api/projetos/${id}/refazer`, json("POST", body)),
+  fileUrl: (p: Project, name: "final.mp4" | "thumb.jpg") => `/api/projetos/${p.id}/arquivos/${name}?v=${p.versao}`,
 };

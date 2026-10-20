@@ -10,63 +10,84 @@ O plano completo do produto (público, funcionalidades, arquitetura, preços, ro
 ## Estrutura
 
 ```
-engine/   motor de edição (Python + FFmpeg) e API HTTP (FastAPI)
-web/      interface (Next.js + Tailwind)
+engine/   motor de edição (Python + FFmpeg + Whisper + Claude)
+  sandbox/  scripts que preparam e rodam o motor numa Vercel Sandbox
+web/      interface e API (Next.js), publicada na Vercel
 docs/     plano de produto
 ```
 
-## Como rodar
+## Como funciona na Vercel
+
+```
+navegador ──upload direto (URL assinada)──▶ Vercel Blob (privado)
+    │                                            ▲
+    ▼                                            │ vídeo pronto (URL assinada)
+API Next.js ──cria máquina + copia o motor──▶ Vercel Sandbox (FFmpeg, Whisper, Claude)
+    ▲                                            │
+    └──────── lê o progresso (status.json) ◀─────┘
+```
+
+1. O navegador envia o vídeo direto para o Blob privado; o arquivo não passa pela função.
+2. A API cria uma Vercel Sandbox, copia o código de `engine/` (empacotado no build por
+   `web/scripts/bundle-engine.mjs`) e roda `engine/sandbox/run.sh` em segundo plano.
+3. A Sandbox instala FFmpeg e o Whisper (~45 s), baixa o vídeo, edita e envia o resultado
+   para o Blob com URLs assinadas. Nenhum token de acesso entra na máquina.
+4. A página do projeto consulta o progresso; quando termina, a API desliga a máquina.
+
+### Configuração do projeto na Vercel
+
+- **Root Directory:** `web`
+- **Blob:** um store **privado** ligado ao projeto (cria a variável `BLOB_READ_WRITE_TOKEN`).
+- **Variáveis de ambiente:**
+
+| Variável | Obrigatória | Para quê |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | não | Liga o diretor com IA (sem ela, edita por regras) |
+| `ELOTAKE_LANG` | não | Idioma da fala; padrão `pt` |
+| `ELOTAKE_WHISPER_MODEL` | não | Modelo de transcrição; padrão `small` |
+| `ELOTAKE_VCPUS` | não | vCPUs por máquina; padrão 4 (máximo do plano Hobby) |
+| `ELOTAKE_SNAPSHOT_ID` | não | Snapshot de Sandbox já preparado (pula a instalação) |
+
+O acesso fica protegido pela própria Vercel (Deployment Protection) até entrar login.
+
+## Desenvolvimento local
 
 Pré-requisitos: Python 3.11+, Node 20+ e FFmpeg com libass (`ffmpeg -filters | grep ass`).
-Para a legenda ficar igual à do produto, instale a fonte Inter (`fonts-inter` no Ubuntu).
-
-### Motor
+Sem `BLOB_READ_WRITE_TOKEN`, a interface guarda tudo em `web/.data` e roda o motor como
+processo local, então dá para testar sem conta na Vercel.
 
 ```bash
 cd engine
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[transcricao,dev]"     # sem [transcricao], edita só pelos silêncios
-export ANTHROPIC_API_KEY=...             # opcional: liga o diretor com IA
-uvicorn elotake_engine.api:app --port 8000
-```
+python -m venv .venv && .venv/bin/pip install -e ".[transcricao,dev]"
 
-Variáveis úteis:
-
-| Variável | Padrão | Para quê |
-|---|---|---|
-| `ELOTAKE_DATA` | `data` | Onde ficam vídeos e projetos |
-| `ELOTAKE_USE_AI` | `1` | `0` desliga o diretor com IA |
-| `ELOTAKE_WHISPER_MODEL` | `small` | Tamanho do modelo de transcrição (`base`, `small`, `medium`...) |
-| `ELOTAKE_LANG` | detecta | Idioma da fala (`pt`, `en`...) |
-| `ELOTAKE_WORKERS` | `2` | Vídeos editados em paralelo |
-
-Também dá para editar direto pela linha de comando:
-
-```bash
-elotake editar bruto.mp4 --estilo dinamico --destino reels --objetivo "anúncio do curso"
-elotake referencia video_que_eu_amo.mp4   # mede o ritmo de corte de uma referência
-```
-
-### Interface
-
-```bash
-cd web
+cd ../web
 npm install
-NEXT_PUBLIC_ENGINE_URL=http://localhost:8000 npm run dev
+npm run dev        # http://localhost:3000
 ```
 
-Abra http://localhost:3000.
+Variáveis úteis no modo local: `ANTHROPIC_API_KEY`, `ELOTAKE_LANG`, `ELOTAKE_WHISPER_MODEL`
+(use `base` para testar mais rápido), `ELOTAKE_PYTHON` (padrão `engine/.venv/bin/python`).
+
+### Linha de comando
+
+```bash
+cd engine
+.venv/bin/elotake editar bruto.mp4 --estilo dinamico --destino reels --objetivo "anúncio do curso"
+.venv/bin/elotake referencia video_que_eu_amo.mp4   # mede o ritmo de corte de uma referência
+.venv/bin/elotake catalogo > ../web/src/lib/catalog.json   # depois de mudar estilos/destinos
+```
 
 ### Testes
 
 ```bash
-cd engine && pytest
+cd engine && .venv/bin/pytest
+cd web && npm run lint && npm run build
 ```
 
 Os testes geram um vídeo sintético com fala (pausas longas, um "um" e uma frase repetida),
-editam em todos os formatos e conferem tamanho, duração, áudio e legendas.
+editam em todos os formatos e conferem tamanho, duração, áudio, legendas e o worker.
 
-## Como funciona
+## Como o motor edita
 
 1. **Análise:** metadados, silêncios, cortes de cena e transcrição com tempo por palavra.
 2. **Direção:** o Claude lê as frases numeradas, o estilo e o objetivo, e devolve a montagem

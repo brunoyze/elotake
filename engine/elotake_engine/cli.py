@@ -6,13 +6,14 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
 
 from .models import Brief, Platform, ReframeMode
 from .pipeline import edit_video, learn_from_reference, load_transcript
-from .presets import STYLE_PRESETS, profile_from_preset
+from .presets import STYLE_PRESETS, catalog, profile_from_preset
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -34,11 +35,16 @@ def main(argv: list[str] | None = None) -> int:
     ref = sub.add_parser("referencia", help="mede o ritmo de um vídeo de referência")
     ref.add_argument("video", type=Path)
 
+    sub.add_parser("catalogo", help="imprime estilos e destinos em JSON (para a interface web)")
+
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
     if args.cmd == "referencia":
         print(learn_from_reference(args.video))
+        return 0
+    if args.cmd == "catalogo":
+        print(json.dumps(catalog(), ensure_ascii=False, indent=2))
         return 0
 
     profile = profile_from_preset(args.estilo)

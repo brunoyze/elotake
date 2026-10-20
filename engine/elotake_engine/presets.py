@@ -143,3 +143,26 @@ FILLER_WORDS = {
 }
 # Destes, só removemos com segurança quando a palavra é curta e "solta" (pausa ao redor).
 SOFT_FILLERS = {"tipo", "né", "então", "assim", "sabe"}
+
+
+def catalog() -> dict:
+    """Tudo que a interface precisa saber sobre estilos e destinos (exportado para web/)."""
+    from .models import CaptionStyle
+
+    return {
+        "estilos": [
+            {
+                "id": p.id, "nome": p.nome, "descricao": p.descricao, "ritmo": p.ritmo.value,
+                "legenda": p.legenda.value, "cor": p.cor, "efeitos": p.efeitos.model_dump(),
+            }
+            for p in STYLE_PRESETS.values()
+        ],
+        "perfis": {pid: profile_from_preset(pid, id=pid).model_dump(mode="json") for pid in STYLE_PRESETS},
+        "plataformas": [
+            {"id": k.value, "nome": v.nome, "largura": v.width, "altura": v.height, "duracao_max": v.duracao_max}
+            for k, v in PLATFORMS.items()
+        ],
+        "cores": list(COLOR_GRADES),
+        "legendas": [c.value for c in CaptionStyle],
+        "ritmos": [p.value for p in Pace],
+    }

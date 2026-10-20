@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 import { BriefForm } from "@/components/BriefForm";
 import { Button, ErrorNote, Spinner, cx } from "@/components/ui";
@@ -14,7 +15,13 @@ import {
   type StyleProfile,
 } from "@/lib/api";
 
-const PIPELINE: ProjectStatus[] = ["analisando", "dirigindo", "renderizando", "pronto"];
+const PIPELINE: ProjectStatus[] = ["preparando", "analisando", "dirigindo", "renderizando", "pronto"];
+// Sub-etapas que aparecem como parte de uma etapa visível.
+const STAGE_OF: Partial<Record<ProjectStatus, ProjectStatus>> = {
+  na_fila: "preparando",
+  baixando: "preparando",
+  enviando: "renderizando",
+};
 
 function fmt(s: number) {
   const m = Math.floor(s / 60);
@@ -88,6 +95,7 @@ export default function ProjetoPage({ params }: { params: Promise<{ id: string }
   const [adjusting, setAdjusting] = useState(false);
   const [draft, setDraft] = useState<Brief | null>(null);
   const [redoing, setRedoing] = useState(false);
+  const router = useRouter();
 
   const working = project && project.status !== "pronto" && project.status !== "erro";
 
@@ -104,9 +112,19 @@ export default function ProjetoPage({ params }: { params: Promise<{ id: string }
     if (!working) return;
     const timer = setInterval(() => {
       api.getProject(id).then(setProject).catch(() => {});
-    }, 1500);
+    }, 3000);
     return () => clearInterval(timer);
   }, [id, working]);
+
+  async function remove() {
+    if (!window.confirm("Excluir este projeto e os vídeos dele? Não dá para desfazer.")) return;
+    try {
+      await api.deleteProject(id);
+      router.push("/projetos");
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
 
   async function redo() {
     if (!draft) return;
@@ -125,7 +143,7 @@ export default function ProjetoPage({ params }: { params: Promise<{ id: string }
 
   const plan = project.plano;
   const vertical = ["reels", "ads"].includes(project.brief.plataforma);
-  const currentStage = PIPELINE.indexOf(project.status);
+  const currentStage = PIPELINE.indexOf(STAGE_OF[project.status] ?? project.status);
 
   return (
     <div className="space-y-8">
@@ -144,7 +162,7 @@ export default function ProjetoPage({ params }: { params: Promise<{ id: string }
             <div className="h-full bg-rec transition-all duration-700" style={{ width: `${project.progresso * 100}%` }} />
           </div>
           <ol className="space-y-3">
-            {PIPELINE.slice(0, 3).map((s, i) => (
+            {PIPELINE.slice(0, 4).map((s, i) => (
               <li key={s} className="flex items-center gap-3 text-sm">
                 {i < currentStage ? (
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rec text-[10px]">✓</span>
@@ -157,11 +175,25 @@ export default function ProjetoPage({ params }: { params: Promise<{ id: string }
               </li>
             ))}
           </ol>
-          <p className="text-xs text-muted">Pode fechar esta página; o vídeo continua sendo editado.</p>
+          <p className="text-xs text-muted">
+            Pode fechar esta página; o vídeo continua sendo editado. A primeira etapa leva cerca de 1 minuto.
+          </p>
         </div>
       )}
 
-      {project.status === "erro" && <ErrorNote message={`A edição falhou: ${project.erro}`} />}
+      {project.status === "erro" && (
+        <div className="max-w-xl space-y-4">
+          <ErrorNote message={`A edição falhou: ${project.erro}`} />
+          <div className="flex gap-3">
+            <Button onClick={() => api.redo(id, {}).then(setProject).catch((e) => setError((e as Error).message))}>
+              Tentar de novo
+            </Button>
+            <Button variant="ghost" onClick={remove}>
+              Excluir projeto
+            </Button>
+          </div>
+        </div>
+      )}
 
       {project.status === "pronto" && plan && (
         <div className="grid gap-8 lg:grid-cols-[auto_1fr]">
@@ -207,17 +239,22 @@ export default function ProjetoPage({ params }: { params: Promise<{ id: string }
             <Copyable label="Descrição" text={plan.descricao} />
             <Copyable label="Hashtags" text={plan.hashtags.join(" ")} />
 
-            {!adjusting ? (
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setDraft(project.brief);
-                  setAdjusting(true);
-                }}
-              >
-                Ajustar e refazer
-              </Button>
-            ) : null}
+            {!adjusting && (
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setDraft(project.brief);
+                    setAdjusting(true);
+                  }}
+                >
+                  Ajustar e refazer
+                </Button>
+                <Button variant="ghost" onClick={remove} className="text-muted">
+                  Excluir projeto
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}

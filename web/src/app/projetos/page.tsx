@@ -15,12 +15,11 @@ export default function ProjetosPage() {
       api
         .listProjects()
         .then((p) => alive && setProjects(p))
-        .catch(() => alive && setError("Não consegui falar com o motor de edição. Ele está rodando?"));
+        .catch(() => alive && setError("Não consegui carregar os projetos."));
+    // Carrega uma vez: listar o armazenamento conta como operação no plano gratuito.
     load();
-    const timer = setInterval(load, 4000);
     return () => {
       alive = false;
-      clearInterval(timer);
     };
   }, []);
 
@@ -50,9 +49,7 @@ export default function ProjetosPage() {
                 <img src={api.fileUrl(p, "thumb.jpg")} alt="" className="h-full w-full object-cover" />
               )}
               {p.status !== "pronto" && p.status !== "erro" && (
-                <div className="absolute inset-x-3 bottom-3 h-1 overflow-hidden rounded-full bg-line">
-                  <div className="h-full bg-rec transition-all" style={{ width: `${p.progresso * 100}%` }} />
-                </div>
+                <span className="absolute inset-0 flex items-center justify-center text-xs text-muted">editando…</span>
               )}
             </div>
             <div className="p-3">

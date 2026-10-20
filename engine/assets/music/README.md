@@ -1,10 +1,9 @@
 # Biblioteca de música
 
-O motor escolhe a trilha pelo "clima" do estilo: coloque arquivos em
-`assets/music/<clima>/` (por exemplo `energetico/`, `emocional/`, `corporativo/`, `calmo/`).
-O primeiro arquivo da pasta (ordem alfabética) é usado.
+Por enquanto cada pessoa envia a própria música junto com o vídeo. A biblioteca
+licenciada entra depois.
 
-Use apenas faixas com licença para uso comercial e redistribuição em vídeos dos
-clientes. Os arquivos de áudio não vão para o repositório (veja `.gitignore`).
-
-Quem sobe o vídeo também pode mandar a própria música; ela tem prioridade sobre a biblioteca.
+Quando entrar, o motor escolhe a trilha pelo "clima" do estilo: arquivos em
+`assets/music/<clima>/` (por exemplo `energetico/`, `emocional/`, `corporativo/`, `calmo/`),
+usando o primeiro da pasta em ordem alfabética. Só faixas com licença para uso comercial;
+os arquivos de áudio não vão para o repositório (veja `.gitignore`).

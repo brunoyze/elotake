@@ -48,9 +48,15 @@ Três ideias guiam o produto:
 
 ## 3. Para quem (primeiros clientes)
 
-1. **Infoprodutores e quem vende com anúncio**: gravam muitos criativos, precisam testar
-   variações rápido. Dor alta, disposição a pagar alta. **Público inicial recomendado.**
-2. **Criadores de conteúdo** (Reels/TikTok/Shorts/YouTube): volume alto, sensíveis a estilo.
+Dois públicos no lançamento, que querem a mesma coisa (vídeo bom, rápido, no estilo deles):
+
+1. **Criadores de conteúdo** (Reels/TikTok/Shorts/YouTube): volume alto, sensíveis a estilo.
+   O próprio fundador é o primeiro usuário: a Elotake vai editar os conteúdos da Elotake.
+2. **Infoprodutores e quem vende com anúncio**: gravam muitos criativos, precisam testar
+   variações rápido. Dor alta, disposição a pagar alta.
+
+Depois:
+
 3. **Pequenos negócios e profissionais liberais** (médico, advogado, loja): querem aparecer,
    não sabem editar, não têm editor.
 4. **Social medias e agências**: vários clientes, cada um com um estilo — o "DNA por cliente"
@@ -93,7 +99,8 @@ Princípios de UX:
 - [x] Áudio: limpeza de ruído, compressão, normalização de loudness por plataforma,
       música com *ducking* automático (abaixa quando a pessoa fala)
 - [x] Interface web: onboarding do estilo, upload, acompanhamento, player, linha do tempo
-      do que foi cortado, "ajustar e refazer" reaproveitando a transcrição
+      do que foi cortado, "ajustar e refazer" reaproveitando a transcrição, excluir projeto
+- [x] Música: a pessoa envia a faixa dela (biblioteca licenciada fica para depois)
 
 ### Fase 2 — "parece editor de verdade" (próximos 2 a 3 meses)
 
@@ -150,16 +157,21 @@ Por que essa arquitetura:
 
 ## 7. Arquitetura técnica
 
-| Camada | MVP (agora) | Produção |
+Tudo roda na Vercel por enquanto (Supabase entra quando houver login e vários usuários).
+
+| Camada | Agora (Vercel) | Depois |
 |---|---|---|
-| Interface | Next.js 15 + Tailwind (`web/`) | Mesma, hospedada na Vercel |
-| API | FastAPI (`engine/`) | Mesma, em contêiner |
-| Fila e workers | Thread pool no processo | Fila (Redis/SQS) + workers com FFmpeg; GPU para Whisper |
-| Arquivos | Disco local | Storage de objetos (Cloudflare R2 ou S3) com upload direto do navegador |
-| Banco | JSON em disco | Postgres (Supabase) |
-| Login | — | Supabase Auth (e-mail, Google) |
+| Interface + API | Next.js 15 na Vercel (`web/`) | Mesma |
+| Edição (FFmpeg + Whisper + Claude) | Uma Vercel Sandbox por vídeo, criada sob demanda | Snapshot pronto para ligar mais rápido; plano Pro para vídeos longos |
+| Arquivos | Vercel Blob privado; upload direto do navegador com URL assinada | Mesma |
+| Dados (projetos, estilos) | JSON no Blob | Postgres (Supabase) |
+| Login | Proteção da própria Vercel (só quem tem acesso ao projeto) | Supabase Auth (e-mail, Google) |
 | Pagamento | — | Stripe (assinatura + créditos de minutos) |
-| IA | Claude (direção), Whisper local (transcrição) | Idem; Whisper em GPU ou API de transcrição |
+
+Limites do plano Hobby da Vercel (gratuito), suficientes para uso próprio e testes:
+5 h de CPU de Sandbox por mês, sessões de até 45 min (vídeos de até ~15 min de bruto),
+1 GB de armazenamento no Blob (dá para excluir projetos antigos pela interface).
+O plano Pro tira esses limites quando chegar a hora de abrir para mais gente.
 
 Custos por vídeo (estimativa a validar com uso real): a direção com IA lê só a transcrição
 (alguns milhares de tokens por vídeo curto); o maior custo é computação de render e
@@ -181,7 +193,7 @@ Créditos avulsos de minutos para quem passar do limite.
 | Semanas | Entrega |
 |---|---|
 | 1–2 | **Feito:** motor + interface do MVP (este repositório) |
-| 3–4 | Login, storage na nuvem, fila de workers, deploy; 10 usuários de teste reais |
+| 3–4 | **Feito:** no ar na Vercel (Blob + Sandbox). A seguir: login e 10 usuários de teste reais |
 | 5–6 | Reenquadramento por rosto, biblioteca de música, marca do cliente |
 | 7–8 | Ajuste por conversa, vários cortes por bruto, variações de anúncio |
 | 9–10 | Pagamento, planos, landing page, lançamento fechado (lista de espera) |
@@ -208,11 +220,12 @@ Créditos avulsos de minutos para quem passar do limite.
 
 ## 12. Decisões que dependem de você
 
-1. **Público do lançamento:** recomendo começar por quem vende com anúncio/infoprodutores
-   (dor e disposição a pagar maiores). Confirma?
+1. ~~**Público do lançamento**~~ decidido: criadores de conteúdo (começando pelo fundador) e
+   quem vende com anúncio.
 2. **Web ou app?** O MVP é web (funciona no celular e no computador). App nativo para gravar e
    enviar direto do celular pode vir na fase 2.
-3. **Música:** contratar uma biblioteca licenciada (ex.: Epidemic, Artlist para empresas)
-   ou começar só com "envie sua música"?
-4. **Nome/domínio, identidade visual** e onde hospedar (sugestão: Vercel + Supabase + R2).
-5. **Preços** da tabela acima.
+3. ~~**Música**~~ decidido: por enquanto cada pessoa envia a própria música; biblioteca
+   licenciada depois.
+4. ~~**Hospedagem**~~ decidido: Vercel (Supabase quando entrar login).
+5. ~~**Preços**~~ aprovados como na tabela acima.
+6. **Domínio e identidade visual.**

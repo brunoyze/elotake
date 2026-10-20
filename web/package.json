@@ -1,14 +1,19 @@
 {
-  "name": "web",
+  "name": "elotake-web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "bundle-engine": "node scripts/bundle-engine.mjs",
+    "predev": "node scripts/bundle-engine.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/bundle-engine.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@vercel/blob": "2.8.1",
+    "@vercel/sandbox": "3.6.1",
     "next": "^15.5.28",
     "react": "19.1.0",
     "react-dom": "19.1.0"

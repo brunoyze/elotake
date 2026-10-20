@@ -51,6 +51,7 @@ export default function EstiloPage() {
   const [refLink, setRefLink] = useState("");
   const [refInsight, setRefInsight] = useState<ReferenceInsight | null>(null);
   const [refLoading, setRefLoading] = useState(false);
+  const [refProgress, setRefProgress] = useState(0);
 
   useEffect(() => {
     Promise.all([api.catalog(), api.getProfile()])
@@ -88,7 +89,7 @@ export default function EstiloPage() {
     setRefLoading(true);
     setError(null);
     try {
-      const insight = await api.analyzeReference(file);
+      const insight = await api.analyzeReference(file, setRefProgress);
       setRefInsight(insight);
       setProfile({ ...profile, ritmo: insight.ritmo_sugerido, referencias: [...profile.referencias, file.name] });
     } catch (e) {
@@ -216,7 +217,13 @@ export default function EstiloPage() {
               hint="Suba um vídeo de referência e a Elotake mede o ritmo de corte dele para copiar no seu."
             >
               <label className="flex cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-line bg-panel p-6 text-sm text-muted hover:border-muted">
-                {refLoading ? <Spinner /> : "Escolher vídeo de referência"}
+                {refLoading ? (
+                  <>
+                    <Spinner /> Medindo o ritmo… {Math.round(refProgress * 100)}%
+                  </>
+                ) : (
+                  "Escolher vídeo de referência"
+                )}
                 <input
                   type="file"
                   accept="video/*"
