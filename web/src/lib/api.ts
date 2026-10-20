@@ -13,7 +13,7 @@ import { PROFILE_ID, TERMINAL } from "./types";
 
 export * from "./types";
 
-type Config = { storage: "blob" | "local"; ia: boolean };
+type Config = { storage: "blob" | "local"; ia: boolean; usuario: { id: string; email: string } | null };
 type Progress = (fraction: number) => void;
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -45,8 +45,10 @@ function safeName(name: string) {
 
 /** Envia um arquivo e devolve o caminho dele no armazenamento. */
 async function uploadFile(file: File, onProgress?: Progress): Promise<string> {
-  const pathname = `uploads/${crypto.randomUUID()}/${safeName(file.name)}`;
-  if ((await config()).storage === "blob") {
+  const { storage, usuario } = await config();
+  if (!usuario) throw new Error("faça login para enviar vídeos");
+  const pathname = `uploads/${usuario.id}/${crypto.randomUUID()}/${safeName(file.name)}`;
+  if (storage === "blob") {
     const result = await upload(pathname, file, {
       access: "private",
       handleUploadUrl: "/api/upload",

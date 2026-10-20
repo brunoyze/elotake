@@ -13,6 +13,7 @@ O plano completo do produto (público, funcionalidades, arquitetura, preços, ro
 engine/   motor de edição (Python + FFmpeg + Whisper + Claude)
   sandbox/  scripts que preparam e rodam o motor numa Vercel Sandbox
 web/      interface e API (Next.js), publicada na Vercel
+supabase/ banco de dados (migrações SQL)
 docs/     plano de produto
 ```
 
@@ -47,11 +48,32 @@ API Next.js ──cria máquina + copia o motor──▶ Vercel Sandbox (FFmpeg,
 | `ELOTAKE_WHISPER_MODEL` | não | Modelo de transcrição; padrão `small` |
 | `ELOTAKE_VCPUS` | não | vCPUs por máquina; padrão 4 (máximo do plano Hobby) |
 | `ELOTAKE_SNAPSHOT_ID` | não | Snapshot de Sandbox já preparado (pula a instalação) |
+| `NEXT_PUBLIC_SUPABASE_URL` | sim, em produção | Endereço do projeto Supabase (login e banco) |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | sim, em produção | Chave pública (ou `NEXT_PUBLIC_SUPABASE_ANON_KEY`) |
+| `SUPABASE_SECRET_KEY` | sim, em produção | Chave secreta, só no servidor (ou `SUPABASE_SERVICE_ROLE_KEY`) |
 
-| `ELOTAKE_ACCESS_CODE` | sim, em produção | Código da tela "Entrar" (teste fechado, até entrar login) |
+### Contas e banco (Supabase)
 
-Enquanto não há login, o app pede um código de acesso (tela `/entrar`). Sem
-`ELOTAKE_ACCESS_CODE` (desenvolvimento local), o app fica aberto.
+Login por e-mail com link mágico ou Google; a conta é criada no primeiro acesso. Estilos,
+projetos, versões e consumo de minutos ficam no Postgres do Supabase
+([`supabase/migrations`](supabase/migrations)). Os vídeos continuam no Blob.
+
+- A API grava com a chave secreta e filtra por `user_id` em toda consulta. O RLS deixa
+  cada pessoa ler só o que é dela pelo navegador, e nada é gravado direto do cliente.
+- Cada upload fica em `uploads/<id da pessoa>/...`; a API recusa arquivos de outra conta.
+- Uma linha em `consumo` por versão pronta (minutos do vídeo bruto); `consumo_mensal`
+  soma por mês, no fuso de São Paulo.
+
+No painel do Supabase:
+
+1. Rode a migração (`supabase db push` ou cole o SQL no SQL Editor).
+2. **Authentication → URL Configuration:** Site URL com o domínio do app e, em Redirect
+   URLs, `https://<domínio>/auth/callback` (e `http://localhost:3000/auth/callback`).
+3. **Authentication → Providers → Google:** ligue e cole o Client ID e o Secret do Google
+   Cloud (redirect `https://<projeto>.supabase.co/auth/v1/callback`).
+
+Sem as variáveis do Supabase (desenvolvimento local), o app roda sem login, com um usuário
+local e os dados em JSON em `web/.data`.
 
 ## Desenvolvimento local
 

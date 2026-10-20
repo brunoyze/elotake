@@ -1,66 +1,60 @@
-// Projetos: guardados como JSON no armazenamento, um diretório por projeto.
+// Projetos: o estado fica no banco (db.ts), os arquivos no armazenamento.
 //
-//   projects/<id>/project.json        estado do projeto (escrito só pela API)
-//   projects/<id>/v<n>/final.mp4 ...  saídas de cada versão (escritas pelo worker)
-//   uploads/<uuid>/<arquivo>          vídeo bruto e música enviados pelo navegador
+//   projects/<id>/v<n>/final.mp4 ...        saídas de cada versão (escritas pelo worker)
+//   uploads/<user>/<uuid>/<arquivo>         vídeo bruto e música enviados pelo navegador
 
 import catalog from "@/lib/catalog.json";
 import type { Brief, Catalog, Project, StyleProfile, WorkerStatus } from "@/lib/types";
 import { TERMINAL } from "@/lib/types";
-import { aiEnabled, type JobHandle, JOB_TIMEOUT_MS, readJobStatus, startJob, stopJob } from "./runner";
+import { db, type StoredProject } from "./db";
+import { aiEnabled, JOB_TIMEOUT_MS, readJobStatus, startJob, stopJob } from "./runner";
 import { storage } from "./storage";
 
-export type StoredProject = Project & {
-  source: string;
-  music: string | null;
-  job: JobHandle | null;
-};
+export type { StoredProject };
 
 const OUTPUTS = ["final.mp4", "thumb.jpg", "plan.json", "analysis.json", "status.json"] as const;
 const PROFILE_ID_RE = /^[a-z0-9_-]{1,40}$/;
 const ID_RE = /^[a-f0-9]{12}$/;
 
-export const projectPath = (id: string) => `projects/${id}/project.json`;
 export const versionPath = (id: string, v: number, name: string) => `projects/${id}/v${v}/${name}`;
 
-export function isUploadPath(path: unknown): path is string {
-  return typeof path === "string" && /^uploads\/[\w-]+\/[^/]+$/.test(path);
+/** Caminho de um upload desta pessoa (cada um só usa os próprios arquivos). */
+export function isUploadPath(path: unknown, userId: string): path is string {
+  if (typeof path !== "string") return false;
+  const match = /^uploads\/([\w-]+)\/[\w-]+\/[^/]+$/.exec(path);
+  return match?.[1] === userId;
 }
 
 export function publicProject(p: StoredProject): Project {
-  const { source: _s, music: _m, job: _j, ...rest } = p; // eslint-disable-line @typescript-eslint/no-unused-vars
+  const { source: _s, music: _m, job: _j, user_id: _u, ...rest } = p; // eslint-disable-line @typescript-eslint/no-unused-vars
   return rest;
 }
 
 // ---- perfis de estilo ------------------------------------------------------
 
-export async function loadProfile(id: string): Promise<StyleProfile | null> {
+export async function loadProfile(userId: string, id: string): Promise<StyleProfile | null> {
   if (!PROFILE_ID_RE.test(id)) return null;
-  const saved = await storage().readJSON<StyleProfile>(`profiles/${id}.json`, true);
+  const saved = await db().getProfile(userId, id);
   return saved ?? (catalog as unknown as Catalog).perfis[id] ?? null;
 }
 
-export async function saveProfile(id: string, profile: StyleProfile): Promise<StyleProfile> {
+export async function saveProfile(userId: string, id: string, profile: StyleProfile): Promise<StyleProfile> {
   if (!PROFILE_ID_RE.test(id)) throw new Error("id de perfil inválido");
   const base = (catalog as unknown as Catalog).perfis[profile.preset] ?? (catalog as unknown as Catalog).perfis.dinamico;
   const merged: StyleProfile = { ...base, ...profile, efeitos: { ...base.efeitos, ...profile.efeitos }, id };
-  await storage().writeJSON(`profiles/${id}.json`, merged);
+  await db().saveProfile(userId, id, merged);
   return merged;
 }
 
 // ---- projetos --------------------------------------------------------------
 
-export async function getProject(id: string, fresh = true): Promise<StoredProject | null> {
+export async function getProject(userId: string, id: string): Promise<StoredProject | null> {
   if (!ID_RE.test(id)) return null;
-  return storage().readJSON<StoredProject>(projectPath(id), fresh);
-}
-
-async function save(p: StoredProject) {
-  await storage().writeJSON(projectPath(p.id), p);
+  return db().getProject(userId, id);
 }
 
 async function launch(p: StoredProject): Promise<StoredProject> {
-  const profile = await loadProfile(p.profile_id);
+  const profile = await loadProfile(p.user_id, p.profile_id);
   if (!profile) throw new Error("perfil de estilo não encontrado");
   const s = storage();
   const v = p.versao;
@@ -85,11 +79,13 @@ async function launch(p: StoredProject): Promise<StoredProject> {
     p.status = "erro";
     p.erro = `Não consegui ligar a máquina de edição: ${(err as Error).message}`;
   }
-  await save(p);
+  await db().saveProject(p);
+  await db().startVersion(p);
+  if (p.status === "erro") await db().finishVersion(p);
   return p;
 }
 
-export async function createProject(input: {
+export async function createProject(userId: string, input: {
   nome: string;
   profile_id: string;
   brief: Brief;
@@ -99,6 +95,7 @@ export async function createProject(input: {
   const id = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
   const project: StoredProject = {
     id,
+    user_id: userId,
     nome: input.nome.slice(0, 80) || "vídeo",
     criado_em: Date.now() / 1000,
     profile_id: input.profile_id,
@@ -146,22 +143,21 @@ export async function refreshProject(p: StoredProject): Promise<StoredProject> {
   }
   if (TERMINAL.includes(p.status)) {
     await stopJob(p.job);
-    await save(p);
+    await db().saveProject(p);
+    await db().finishVersion(p);
   }
   return p;
 }
 
-export async function listProjects(): Promise<StoredProject[]> {
-  const s = storage();
-  const paths = (await s.list("projects/")).filter((path) => path.endsWith("/project.json"));
-  const projects = await Promise.all(paths.map((path) => s.readJSON<StoredProject>(path)));
-  return projects.filter((p): p is StoredProject => p !== null).sort((a, b) => b.criado_em - a.criado_em);
+export function listProjects(userId: string): Promise<StoredProject[]> {
+  return db().listProjects(userId);
 }
 
 export async function deleteProject(p: StoredProject) {
   if (p.job && !TERMINAL.includes(p.status)) await stopJob(p.job);
   const s = storage();
   await s.deletePrefix(`projects/${p.id}/`);
+  await db().deleteProject(p);
   for (const upload of [p.source, p.music]) {
     if (upload) await s.deletePrefix(upload.slice(0, upload.lastIndexOf("/") + 1));
   }
